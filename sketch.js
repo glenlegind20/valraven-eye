@@ -9,6 +9,10 @@ let glitchActive = false;
 let possessionActive = false;
 let snapshot;
 let ghostFigures = [];
+let lastPossessionTime = 0;
+let possessionCooldown = 2000;
+
+let visitorMemories = [];
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -48,11 +52,14 @@ function draw() {
   }
 
   if (hasCloseFace(detections)) {
-    if (!possessionActive) {
+    possessionActive = true;
+    if (now - lastPossessionTime > possessionCooldown) {
       triggerPossession();
+      lastPossessionTime = now;
     }
+    drawVisitorMemories();
     drawPossessedPhoto();
-    drawFloatingSpirits(); // spirits now appear during possession
+    drawFloatingSpirits();
   } else {
     possessionActive = false;
   }
@@ -92,11 +99,9 @@ function drawPossessedPhoto() {
       let r = ghost.pixels[i];
       let g = ghost.pixels[i + 1];
       let b = ghost.pixels[i + 2];
-
       let gray = (r + g + b) / 3;
       gray = gray > 128 ? 255 : 0;
       if (random() < 0.2) gray = 255 - gray;
-
       let offset = int(random(-30, 30));
       let target = ((y * ghost.width + constrain(x + offset, 0, ghost.width - 1)) * 4);
       ghost.pixels[target] = gray;
@@ -108,10 +113,14 @@ function drawPossessedPhoto() {
   ghost.updatePixels();
   tint(255, 255, 255, 220);
   image(ghost, 0, 0, width, height);
+}
 
-  for (let i = 0; i < height; i += 20) {
-    stroke(255, 50);
-    line(0, i + random(-2, 2), width, i + random(-2, 2));
+function drawVisitorMemories() {
+  for (let i = 0; i < visitorMemories.length; i++) {
+    let img = visitorMemories[i];
+    let alpha = map(i, 0, visitorMemories.length, 30, 100);
+    tint(255, alpha);
+    image(img, 0, 0, width, height);
   }
 }
 
@@ -143,6 +152,10 @@ function hasCloseFace(results) {
 function triggerPossession() {
   snapshot = video.get();
   possessionActive = true;
+  visitorMemories.push(snapshot.get());
+  if (visitorMemories.length > 10) {
+    visitorMemories.shift(); // keep last 10
+  }
   generateGhostFigures();
 }
 
