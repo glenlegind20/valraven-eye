@@ -1,89 +1,67 @@
 let video;
 let detector;
 let detections = [];
-let lastFlash = 0;
-let flashInterval = 10000;
-let eyeVisible = false;
-let blinkTimer = 0;
-let blinking = false;
 
-let possessionTriggered = false;
+let glitchTimer = 0;
+let glitchInterval = 5000;
+let glitchActive = false;
+
+let possessionActive = false;
 let snapshot;
-let possessionTimer = 0;
-let ghostDuration = 1500;
 let ghostFigures = [];
 
 function setup() {
-  let cnv = createCanvas(windowWidth, windowHeight);
-  cnv.style('display', 'block');
-  cnv.position(0, 0);
-
+  createCanvas(windowWidth, windowHeight);
   video = createCapture(VIDEO);
   video.size(width, height);
   video.hide();
 
   video.elt.addEventListener('loadeddata', () => {
     detector = ml5.objectDetector('cocossd', () => {
-      console.log("Model loaded");
       detect();
     });
   });
+
+  glitchTimer = millis();
 }
 
 function draw() {
   background(0);
   let now = millis();
 
-  if (possessionTriggered && now - possessionTimer < ghostDuration) {
-    drawPossessedPhoto();
-    return;
+  // Glitch flash logic
+  if (!possessionActive && now - glitchTimer > glitchInterval) {
+    glitchActive = true;
+    glitchTimer = now;
+    glitchInterval = random(4000, 8000);
   }
 
-  if (eyeVisible && now - lastFlash < 1000) {
-    drawIdleEye();
+  if (glitchActive && now - glitchTimer < 300) {
+    drawGlitchFlash();
+  } else {
+    glitchActive = false;
   }
 
-  if (now - lastFlash > flashInterval) {
-    eyeVisible = true;
-    lastFlash = now;
-    flashInterval = random(8000, 15000);
-  }
-
-  if (eyeVisible && now - lastFlash > 1000) {
-    eyeVisible = false;
-  }
-
+  // Possession logic
   if (hasCloseFace(detections)) {
-    triggerPossession();
+    if (!possessionActive) {
+      triggerPossession();
+    }
+    drawPossessedPhoto();
+  } else {
+    possessionActive = false;
   }
 }
 
-function drawIdleEye() {
-  fill(30, 0, 60);
-  ellipse(width / 2, height / 2, 160, 100);
-
-  fill(120, 0, 200);
-  ellipse(width / 2, height / 2, 60, 60);
-
-  fill(0);
-  ellipse(width / 2, height / 2, 20, 20);
-
-  if (blinking) {
-    fill(0);
-    rect(0, 0, width, height);
-    if (millis() - blinkTimer > 300) {
-      blinking = false;
-    }
-  } else if (random(1) < 0.002) {
-    blinking = true;
-    blinkTimer = millis();
-  }
+function drawGlitchFlash() {
+  fill(random(100, 255), 0, random(100, 255));
+  rect(0, 0, width, height);
 }
 
 function drawPossessedPhoto() {
   let ghost = snapshot;
   ghost.filter(GRAY);
-  ghost.filter(BLUR, 3);
+  ghost.filter(BLUR, 4);
   tint(255, 180);
   image(ghost, 0, 0, width, height);
 
@@ -111,8 +89,7 @@ function hasCloseFace(results) {
 
 function triggerPossession() {
   snapshot = video.get();
-  possessionTriggered = true;
-  possessionTimer = millis();
+  possessionActive = true;
   generateGhostFigures();
 }
 
@@ -132,8 +109,6 @@ function generateGhostFigures() {
 function touchStarted() {
   if (!fullscreen()) {
     fullscreen(true);
-  } else {
-    triggerPossession();
   }
 }
 
