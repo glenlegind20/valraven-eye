@@ -97,32 +97,59 @@ function drawPossessedPhoto(elapsed) {
   let ghost = snapshot.get();
   ghost.loadPixels();
 
-  for (let y = 0; y < ghost.height; y += 5) {
-    for (let x = 0; x < ghost.width; x += 5) {
+  // Color channel offsets
+  let rShift = int(random(-20, 20));
+  let gShift = int(random(-20, 20));
+  let bShift = int(random(-20, 20));
+
+  for (let y = 0; y < ghost.height; y++) {
+    for (let x = 0; x < ghost.width; x++) {
       let i = (y * ghost.width + x) * 4;
-      let r = ghost.pixels[i];
-      let g = ghost.pixels[i + 1];
-      let b = ghost.pixels[i + 2];
-      let gray = (r + g + b) / 3;
-      gray = gray > 128 ? 255 : 0;
-      if (random() < 0.2) gray = 255 - gray;
-      let offset = int(random(-30, 30));
-      let target = ((y * ghost.width + constrain(x + offset, 0, ghost.width - 1)) * 4);
-      ghost.pixels[target] = gray;
-      ghost.pixels[target + 1] = gray;
-      ghost.pixels[target + 2] = gray;
+
+      let rIndex = ((y * ghost.width + constrain(x + rShift, 0, ghost.width - 1)) * 4);
+      let gIndex = ((y * ghost.width + constrain(x + gShift, 0, ghost.width - 1)) * 4);
+      let bIndex = ((y * ghost.width + constrain(x + bShift, 0, ghost.width - 1)) * 4);
+
+      ghost.pixels[i]     = ghost.pixels[rIndex];     // R
+      ghost.pixels[i + 1] = ghost.pixels[gIndex + 1]; // G
+      ghost.pixels[i + 2] = ghost.pixels[bIndex + 2]; // B
     }
+  }
+
+  // Block displacement
+  for (let i = 0; i < 20; i++) {
+    let bx = int(random(ghost.width - 40));
+    let by = int(random(ghost.height - 20));
+    let bw = int(random(10, 40));
+    let bh = int(random(5, 20));
+    let dx = int(random(-30, 30));
+    let dy = int(random(-15, 15));
+
+    let block = ghost.get(bx, by, bw, bh);
+    ghost.copy(block, 0, 0, bw, bh, bx + dx, by + dy, bw, bh);
   }
 
   ghost.updatePixels();
 
+  // Fade photo before next capture
   let fadeAlpha = map(elapsed, 0, possessionCooldown, 255, 0);
   tint(255, fadeAlpha);
   image(ghost, 0, 0, width, height);
 
+  // Color spikes
+  for (let i = 0; i < 10; i++) {
+    let x = random(width);
+    let h = random(20, height / 2);
+    let c = color(random(100, 255), random(100, 255), random(100, 255), 180);
+    noStroke();
+    fill(c);
+    rect(x, random(height - h), 2, h);
+  }
+
+  // Scanline flicker
   for (let i = 0; i < height; i += 20) {
-    stroke(255, fadeAlpha * 0.2);
-    line(0, i + random(-2, 2), width, i + random(-2, 2));
+    stroke(255, 40);
+    line(0, i + random(-1, 1), width, i + random(-1, 1));
   }
 }
 
