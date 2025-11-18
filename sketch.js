@@ -53,13 +53,15 @@ function draw() {
 
   if (hasCloseFace(detections)) {
     possessionActive = true;
+
+    drawVisitorMemories();
+    drawPossessedPhoto(now - lastPossessionTime);
+    drawFloatingSpirits();
+
     if (now - lastPossessionTime > possessionCooldown) {
       triggerPossession();
       lastPossessionTime = now;
     }
-    drawVisitorMemories();
-    drawPossessedPhoto();
-    drawFloatingSpirits();
   } else {
     possessionActive = false;
   }
@@ -89,8 +91,10 @@ function drawGlitchFlash() {
   }
 }
 
-function drawPossessedPhoto() {
-  let ghost = snapshot;
+function drawPossessedPhoto(elapsed) {
+  if (!snapshot) return;
+
+  let ghost = snapshot.get();
   ghost.loadPixels();
 
   for (let y = 0; y < ghost.height; y += 5) {
@@ -111,8 +115,15 @@ function drawPossessedPhoto() {
   }
 
   ghost.updatePixels();
-  tint(255, 255, 255, 220);
+
+  let fadeAlpha = map(elapsed, 0, possessionCooldown, 255, 0);
+  tint(255, fadeAlpha);
   image(ghost, 0, 0, width, height);
+
+  for (let i = 0; i < height; i += 20) {
+    stroke(255, fadeAlpha * 0.2);
+    line(0, i + random(-2, 2), width, i + random(-2, 2));
+  }
 }
 
 function drawVisitorMemories() {
@@ -151,10 +162,9 @@ function hasCloseFace(results) {
 
 function triggerPossession() {
   snapshot = video.get();
-  possessionActive = true;
   visitorMemories.push(snapshot.get());
   if (visitorMemories.length > 10) {
-    visitorMemories.shift(); // keep last 10
+    visitorMemories.shift();
   }
   generateGhostFigures();
 }
